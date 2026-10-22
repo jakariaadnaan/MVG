@@ -74,3 +74,22 @@ Restart the backend after installation.
 - The current URL flow returns transcript/SRT data, not the original video file; burned-in MP4 export currently requires a video file selected in the upload control.
 - The current workspace uses a local backend URL. A hosted deployment needs a secured backend and an environment-configurable API URL.
 - This feature does not yet interpret visual scenes or verify claims against independent sources.
+
+
+## Online deployment (Render blueprint)
+A starter deployment blueprint is provided in `render.yaml` for a static frontend and a Docker-based API service.
+
+1. Push the latest repository to GitHub.
+2. Sign in to Render and choose **New → Blueprint**.
+3. Connect this repository and review the two services (`mvg-web` and `mvg-api`).
+4. Deploy the blueprint. If you choose different service names or domains, update `VITE_API_BASE_URL` on the frontend and `CORS_ORIGINS` on the backend to match the actual HTTPS domains, then redeploy the frontend and restart/redeploy the API.
+5. Open the static site's HTTPS URL on your phone. Use **Add to Home Screen** in the mobile browser for an app-like shortcut.
+
+The backend Docker image installs FFmpeg and Noto fonts for media processing. The first Whisper request may take a long time while the model downloads. This is a starter configuration, not a guarantee that the chosen host's free tier has enough RAM, CPU time, disk, or request duration for large video jobs. Test with a short clip first.
+
+### Before public use
+- Add authentication, per-user quotas, request/job timeouts, abuse prevention, and clear retention/privacy controls before accepting uploads from the public internet.
+- Consider a persistent job queue and object storage for longer videos. Free instances may sleep, restart, or have limited memory/disk.
+- X video downloads are best-effort and can fail due to platform restrictions or changes.
+- Do not expose API secrets in frontend environment variables; all `VITE_*` variables are public in the built website.
+- The app is a responsive web app. A separate Android/iOS app is not required to use it from a mobile browser.
