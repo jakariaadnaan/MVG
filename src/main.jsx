@@ -17,6 +17,8 @@ function App() {
   const [result, setResult] = useState(null);
   const [tab, setTab] = useState('transcript');
   const [exporting, setExporting] = useState(false);
+  const [xUrl, setXUrl] = useState('');
+  const [urlBusy, setUrlBusy] = useState(false);
 
   function chooseFile(f) {
     if (!f) return;
@@ -55,6 +57,25 @@ function App() {
       setError(e.message || 'Something went wrong. Start the backend and try again.');
       setProgress('');
     } finally { setBusy(false); }
+  }
+
+  async function analyzeXUrl() {
+    if (!xUrl.trim()) return;
+    setUrlBusy(true); setError(''); setResult(null);
+    setProgress('Fetching public X video and transcribing speech…');
+    try {
+      const body = new FormData();
+      body.append('url', xUrl.trim());
+      body.append('language', language === 'auto' ? '' : language);
+      body.append('model', model);
+      const response = await fetch(`${API_BASE}/api/transcribe-x-url`, { method: 'POST', body });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || 'Could not analyze this X post.');
+      setResult(data); setFile(null); setPreview(''); setTab('transcript'); setProgress('');
+    } catch (e) {
+      setError(e.message || 'X URL analysis failed. Check that the backend is running and yt-dlp is installed.');
+      setProgress('');
+    } finally { setUrlBusy(false); }
   }
 
   function downloadSrt() {
@@ -139,10 +160,15 @@ function App() {
         <div className="content-grid">
           <section className="panel upload-panel">
             <div className="panel-head"><div><div className="panel-kicker">SOURCE FILE</div><h2>Video input</h2></div><span className="file-limit"><LockKeyhole size={12}/> Local processing</span></div>
-            {!file ? <div className="dropzone" onDragOver={e => e.preventDefault()} onDrop={onDrop} onClick={() => inputRef.current?.click()} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && inputRef.current?.click()}>
+            {!file ? <>
+            <div className="dropzone" onDragOver={e => e.preventDefault()} onDrop={onDrop} onClick={() => inputRef.current?.click()} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && inputRef.current?.click()}>
               <input ref={inputRef} type="file" accept="video/*,audio/*" hidden onChange={e => chooseFile(e.target.files?.[0])}/>
               <div className="upload-icon"><Upload size={22}/></div><h3>Drop your video here</h3><p>or <span>browse files</span> from your device</p><div className="file-types"><span>MP4</span><span>MOV</span><span>WEBM</span><span>MP3</span><span>MAX 1 GB</span></div>
-            </div> : <div className="file-preview">
+            </div>
+            <div className="or-divider"><span>OR USE A PUBLIC POST URL</span></div>
+            <div className="url-entry"><div className="url-input-wrap"><Video size={16}/><input value={xUrl} onChange={e => setXUrl(e.target.value)} placeholder="https://x.com/user/status/…" aria-label="Public X post URL"/></div><button className="url-button" disabled={!xUrl.trim() || urlBusy || busy} onClick={analyzeXUrl}>{urlBusy ? <LoaderCircle size={15} className="spin"/> : <ScanSearch size={15}/>} Analyze URL</button></div>
+            <p className="url-help">Public posts only. Private, login-restricted, or unavailable videos may not work.</p>
+            </> : <div className="file-preview">
               {preview && file.type.startsWith('video/') ? <video src={preview} controls /> : <div className="audio-placeholder"><Film size={30}/><span>Audio source selected</span></div>}
               <div className="file-info"><div className="file-symbol"><Video size={18}/></div><div className="file-name"><b>{file.name}</b><span>{(file.size / (1024 * 1024)).toFixed(1)} MB · Ready to process</span></div><button className="icon-button" onClick={() => {setFile(null);setPreview('');setResult(null);}} title="Remove file"><X size={17}/></button></div>
             </div>}
