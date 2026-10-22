@@ -86,9 +86,9 @@ function App() {
       '-----------',
       'Machine-generated transcription may contain mistakes. Verify names, dates, translations, and claims before publication.'
     ];
-    const url = URL.createObjectURL(new Blob([lines.join('\\n')], { type: 'text/plain;charset=utf-8' }));
+    const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' }));
     const a = document.createElement('a');
-    a.href = url; a.download = `${file?.name?.replace(/\\.[^.]+$/, '') || 'mvg-report'}-report.txt`; a.click();
+    a.href = url; a.download = `${file?.name?.replace(/\.[^.]+$/, '') || 'mvg-report'}-report.txt`; a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -107,7 +107,7 @@ function App() {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `${file.name.replace(/\\.[^.]+$/, '')}-subtitled.mp4`; a.click();
+      a.href = url; a.download = `${file.name.replace(/\.[^.]+$/, '')}-subtitled.mp4`; a.click();
       URL.revokeObjectURL(url);
       setProgress('Subtitle video exported.');
     } catch (e) {
