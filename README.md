@@ -55,3 +55,22 @@ The backend must be updated and FFmpeg must be installed with its `subtitles` fi
 - There is no visual scene interpretation or source-cited fact-checking yet.
 - This starter has no user accounts, authentication, job queue, cloud deployment configuration, or production-grade rate limiting.
 - The default backend address is local-only. For deployment, configure the frontend API URL and CORS allowlist for your own secured server.
+
+
+## v0.3 — Public X post URL transcription
+The workspace now includes an optional field for a public X/Twitter post URL. The backend validates the host and post URL shape, uses `yt-dlp` to attempt downloading an available post video, then runs the same Faster-Whisper transcription pipeline. The frontend can still upload a local file instead.
+
+### Install the updated backend dependencies
+From the `backend` folder with your virtual environment activated:
+```bash
+pip install -r requirements.txt
+```
+Restart the backend after installation.
+
+### X URL notes
+- This is best-effort support for public posts. X may change its website, or a post may be private, unavailable, age-restricted, login-restricted, or blocked; those cases can fail.
+- Only submit links to content you are authorized to access and process. Do not attempt to bypass access controls.
+- The backend downloads the media to a temporary directory for transcription and deletes that directory afterward.
+- The current URL flow returns transcript/SRT data, not the original video file; burned-in MP4 export currently requires a video file selected in the upload control.
+- The current workspace uses a local backend URL. A hosted deployment needs a secured backend and an environment-configurable API URL.
+- This feature does not yet interpret visual scenes or verify claims against independent sources.
