@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Activity, ArrowDownToLine, AudioLines, Check, ChevronDown, CircleHelp, Clapperboard, Clock3, FileText, Film, Languages, LoaderCircle, LockKeyhole, Play, Plus, ScanSearch, ShieldCheck, Sparkles, Upload, Video, X } from 'lucide-react';
 import './style.css';
 
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 
 function App() {
   const inputRef = useRef(null);
