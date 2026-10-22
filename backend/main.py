@@ -107,3 +107,71 @@ async def transcribe(
         await file.close()
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
+
+
+@app.post("/api/burn-subtitles")
+async def burn_subtitles(
+    file: UploadFile = File(...),
+    srt: str = Form(...),
+):
+    """Create an MP4 with the supplied, user-reviewed SRT subtitles burned in."""
+    import shutil
+    import subprocess
+    from fastapi.responses import FileResponse
+    from starlette.background import BackgroundTask
+
+    if not shutil.which("ffmpeg"):
+        raise HTTPException(status_code=503, detail="FFmpeg is not installed or not available on PATH.")
+    filename = Path(file.filename or "video.mp4").name
+    if Path(filename).suffix.lower() not in {".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v"}:
+        raise HTTPException(status_code=415, detail="Choose a supported video file.")
+    if not srt.strip():
+        raise HTTPException(status_code=400, detail="Subtitle text is empty.")
+
+    workdir = tempfile.mkdtemp(prefix="mvg_export_")
+    video_path = os.path.join(workdir, "source" + (Path(filename).suffix or ".mp4"))
+    srt_path = os.path.join(workdir, "captions.srt")
+    output_path = os.path.join(workdir, "subtitled.mp4")
+    try:
+        size = 0
+        with open(video_path, "wb") as target:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > MAX_BYTES:
+                    raise HTTPException(status_code=413, detail="File exceeds the 1 GB limit.")
+                target.write(chunk)
+        if size == 0:
+            raise HTTPException(status_code=400, detail="The uploaded video is empty.")
+        with open(srt_path, "w", encoding="utf-8-sig", newline="") as target:
+            target.write(srt)
+
+        # Use FFmpeg's subtitles filter; UTF-8 supports Bangla captions.
+        filter_path = srt_path.replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
+        command = [
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+            "-i", video_path,
+            "-vf", f"subtitles='{filter_path}':charenc=UTF-8",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
+            "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart",
+            output_path,
+        ]
+        completed = subprocess.run(command, capture_output=True, text=True, timeout=1800)
+        if completed.returncode != 0 or not os.path.exists(output_path):
+            raise HTTPException(status_code=422, detail="FFmpeg could not burn subtitles. Check FFmpeg subtitle-filter support and installed fonts.")
+        return FileResponse(
+            output_path,
+            media_type="video/mp4",
+            filename=f"{Path(filename).stem}-subtitled.mp4",
+            background=BackgroundTask(shutil.rmtree, workdir, ignore_errors=True),
+        )
+    except subprocess.TimeoutExpired as exc:
+        shutil.rmtree(workdir, ignore_errors=True)
+        raise HTTPException(status_code=408, detail="Subtitle export timed out.") from exc
+    except Exception:
+        shutil.rmtree(workdir, ignore_errors=True)
+        raise
+    finally:
+        await file.close()
